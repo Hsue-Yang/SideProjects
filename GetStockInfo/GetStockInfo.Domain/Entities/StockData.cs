@@ -36,7 +36,7 @@ namespace GetStockInfo.Domain.Entities
 
     public class StockOptions
     {
-        public List<string> Options { get; set; }
+        public List<string> Options { get; set; } = new List<string>();
     }
 
     public class StockInfo

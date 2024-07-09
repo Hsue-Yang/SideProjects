@@ -124,6 +124,26 @@ namespace GetStockInfo.Controllers
             return Ok(lineBot);
         }
 
+        //[HttpGet]
+        //[Route("StockOptions")]
+        //public async Task<IActionResult> StockOptions()
+        //{
+        //    var lineBot = new isRock.LineBot.Bot(ChannelAccessToken);
+        //    lineBot.PushMessage(UserID, "請輸入股票代碼或名稱");
+
+        //    return Ok();
+        //}
+
+        //[HttpGet]
+        //[Route("FundOptions")]
+        //public async Task<IActionResult> FundOptions()
+        //{
+        //    var lineBot = new isRock.LineBot.Bot(ChannelAccessToken);
+        //    lineBot.PushMessage(UserID, "請輸入基金代碼或名稱");
+
+        //    return Ok();
+        //}
+
         [HttpPost]
         [Route("LineBot/Webhook")]
         public async Task<IActionResult> LineBotWebhook([FromBody] LineBotRequest request)
@@ -161,22 +181,37 @@ namespace GetStockInfo.Controllers
                         {
                             foreach (var node in nodes)
                             {
-                                var href = node.GetAttributeValue("href", "");
-                                var stockId = href.Split("stock_id=")[1];
-                                var quote = href.Split("quote/")[1];
+                                var href = node.GetAttributeValue("href", "").TrimEnd('\\');
+                                string stockId = null;
+                                string quote = null;
                                 var stockOption = new StockOptions();
-                                stockOption.Options.Add(stockId);
-                                stockOption.Options.Add(quote);
+                                if (href.Contains("stock_id="))
+                                {
+                                    stockId = href.Split("stock_id=")[1].Split('&')[0];
+                                    stockOption.Options.Add(stockId);
+                                }
+                                if (href.Contains("quote/"))
+                                {
+                                    quote = href.Split("quote/")[1].Split('&')[0];
+                                    stockOption.Options.Add(quote);
+                                }
                                 options.Add(stockOption);
                             }
                             var actions = new List<isRock.LineBot.TemplateActionBase>();
+                            int maxActions = 4; // 最大允许的 actions 数量
+                            int currentActionsCount = 0;
                             foreach (var opt in options)
                             {
-                                new isRock.LineBot.PostbackAction()
+                                if (currentActionsCount >= maxActions)
                                 {
-                                    label = opt.ToString(),
-                                    data = opt.ToString(),
-                                };
+                                    break; // 如果已经达到最大数量，则跳出循环
+                                }
+                                actions.Add(new isRock.LineBot.PostbackAction()
+                                {
+                                    label = string.Join(", ", opt.Options),
+                                    data = opt.Options.ToString(),
+                                });
+                                currentActionsCount++; // 更新当前 actions 数量
                             }
                             var buttonTemplate = new isRock.LineBot.ButtonsTemplate()
                             {
@@ -186,7 +221,8 @@ namespace GetStockInfo.Controllers
                                 thumbnailImageUrl = new Uri("https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"),
                                 actions = actions //設定回覆動作
                             };
-                            //會再回傳要查詢的股票是哪隻，再丟給她
+                            lineBot.PushMessage(UserID, buttonTemplate);
+                            //會再回傳要查詢的股票是哪隻，再丟給她                             
                         }
                     }
                 }
