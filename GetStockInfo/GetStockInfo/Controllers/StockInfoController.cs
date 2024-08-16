@@ -234,5 +234,60 @@ namespace GetStockInfo.Controllers
             return Ok();
 
         }
+
+        [HttpGet]
+        [Route("test")]
+        public async Task<IActionResult> test()
+        {
+            var stockOptionsUrl = $"https://tw.stock.yahoo.com/_td-stock/api/resource/WaferAutocompleteService;view=wafer&query=0050";
+
+            using (var client = new HttpClient())
+            {
+                var json = await client.GetStringAsync(stockOptionsUrl);
+                var stockInfos = new List<StockInfos>();
+
+                // Load HTML document
+                var doc = new HtmlDocument();
+                doc.LoadHtml(json);
+
+                // Select all div elements with the specified class
+                var divNodes = doc.DocumentNode.SelectNodes("//div[contains(@class, 'Pos(a)')]/ul/li/a");
+
+                if (divNodes != null)
+                {
+                    foreach (var node in divNodes)
+                    {
+                        var href = node.GetAttributeValue("href", "");
+                        var stockId = "";
+                        var quote = "";
+                        if (href.Contains("stock_id="))
+                        {
+                            stockId = href.Split("stock_id=")[1].Split('&')[0];
+                        }
+                        else if (href.Contains("/quote/"))
+                        {
+                            quote = href.Split("/quote/")[1].Split('.')[0];
+                        }
+                        else if (href.Contains("quote/"))
+                        {
+                            quote = href.Split("quote/")[1].Split('.')[0];
+                        }
+
+                        // Get stock name from span
+                        var spanNode = node.SelectSingleNode(".//span[contains(@class, 'Fz(16px)')]");
+                        var stockName = spanNode?.InnerText?.Trim();
+
+                        stockInfos.Add(new StockInfos
+                        {
+                            StockId = stockId,
+                            Quote = quote,
+                            StockName = stockName
+                        });
+                    }
+                }
+
+                return Ok(stockInfos);
+            }
+        }
     }
 }
